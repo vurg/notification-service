@@ -1,0 +1,10 @@
+# Ignore credentials and token files
+credentials.json
+token.json
+appointment.ics
+
+# Ignore .env files
+.env
+
+# Ignore Python cache files
+__pycache__/
