@@ -1,7 +1,18 @@
 # Ignore credentials and token files
 credentials.json
 token.json
+request.json
+secrets.json
 appointment.ics
+toothcheck-app-92b838d1c483.json
+
+# Ignore scripts
+script.sh
+output.txt
+
+# Ignore other files
+message.html
+oauth2.py
 
 # Ignore .env files
 .env
