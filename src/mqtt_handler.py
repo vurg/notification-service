@@ -14,12 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import threading
 import json
 import time
 import os
 from dotenv import load_dotenv
 import paho.mqtt.client as paho
 from paho import mqtt
+from notification import refresh_token
 from notification import main
 from iCalendar import create_icalendar_file 
 
@@ -28,6 +30,12 @@ load_dotenv()
 mqtt_username = os.getenv("MQTT_USERNAME")
 mqtt_password = os.getenv("MQTT_PASSWORD")
 mqtt_uri = os.getenv("MQTT_URI")
+permitted_emails = os.environ.get("PERMITTED_EMAILS")
+permitted_emails_list = permitted_emails.split(',')
+
+print(mqtt_username)
+print(permitted_emails)
+print(permitted_emails_list)
 
 # setting callbacks for different events to see if it works, print the message etc.
 def on_connect(client, userdata, flags, rc, properties=None):
@@ -46,17 +54,34 @@ def on_message(client, userdata, msg):
     print(msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
     payload = msg.payload.decode("utf-8")
 
-    data = json.loads(payload)
-    name = data.get("name")
-    email = data.get("email")
-    appointment_date = data.get("appointment_date")
-    appointment_time = data.get("appointment_time")
+    try:
+        data = json.loads(payload)
 
-    # Access the "name" field
-    # name = data.get("name", "Name not found")  # Use a default value if "name" is not present
-    print(f"A booking has been made. {name} ({email}) on {appointment_date} at {appointment_time}.")
-    create_icalendar_file(name, email, appointment_date, appointment_time)
-    main(name, email, appointment_date, appointment_time)
+        name = data.get("patientName", "Sir/Madam")
+        email = data.get("patientEmail")
+        dentist_office = data.get("dentistName")
+        appointment_date = data.get("date")
+        appointment_time = data.get("time")
+        appointment_message = data.get("message")
+        appointment_status = data.get("status")
+
+        if appointment_status == "BOOKED":
+            print(f"A booking has been made. {name} ({email}) on {appointment_date} at {appointment_time}.")
+        elif appointment_status == "CANCELED":
+            print(f"A booking has been cancelled. {name} ({email}) on {appointment_date} at {appointment_time}.")
+        else:
+            message = "Invalid appointment status"
+
+        if email in permitted_emails_list and (appointment_status == "BOOKED" or appointment_status == "CANCELED"):
+            create_icalendar_file(name, email, dentist_office, appointment_date, appointment_time, appointment_message, appointment_status)
+            main(name, email, dentist_office, appointment_date, appointment_time, appointment_message, appointment_status)
+        else:
+            print("Notification not processed.")
+
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 # using MQTT version 5 here, for 3.1.1: MQTTv311, 3.1: MQTTv31
 # userdata is user defined data of any type, updated by user_data_set()
@@ -81,6 +106,14 @@ client.subscribe("booking/#", qos=1)
 
 # a single publish, this can also be done in loops, etc.
 client.publish("notification/status", payload="alive", qos=1)
+
+# Second thread
+# Create a thread for refresh_token function
+refresh_thread = threading.Thread(target=refresh_token)
+
+# Start the refresh_token thread as a daemon (so it stops when the main thread stops)
+refresh_thread.daemon = True
+refresh_thread.start()
 
 # loop_forever for simplicity, here you need to stop the loop manually
 # you can also use loop_start and loop_stop

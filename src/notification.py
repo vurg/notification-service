@@ -3,10 +3,10 @@
 # Source: https://thepythoncode.com/article/use-gmail-api-in-python
 
 import os.path
+import time
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-# from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -21,14 +21,6 @@ from email.mime.image import MIMEImage
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
 from mimetypes import guess_type as guess_mime_type
-
-# service account
-'''
-SCOPES = ['https://www.googleapis.com/auth/sqlservice.admin']
-SERVICE_ACCOUNT_FILE = 'service.json'
-credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-'''
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://mail.google.com/']
@@ -82,16 +74,31 @@ def send_message(service, destination, obj, body, attachments=[]):
       body=build_message(destination, obj, body, attachments)
     ).execute()
 
-def create_appointment_message(name, appointment_date, appointment_time):
-    # Create the message string
-    message = f"Hello {name},\n\nYour dentist appointment is scheduled for {appointment_date} at {appointment_time}.\n\nThanks,\nToothCheck App"
+def create_appointment_message(name, dentist_office, appointment_date, appointment_time, appointment_message, appointment_status):
+    # Create the message string based on appointment status
+    if appointment_status == "BOOKED":
+        message = f"Hello {name},\n\nYour dentist appointment is scheduled for {appointment_date} at {appointment_time} at {dentist_office}. \n\nReason: {appointment_message} \n\nThanks,\nToothCheck App"
+    elif appointment_status == "CANCELED":
+        message = f"Hello {name},\n\nYour dentist appointment scheduled for {appointment_date} at {appointment_time} has been canceled at {dentist_office}. \n\nThanks,\nToothCheck App"
+    else:
+        message = "Invalid appointment status"
 
     return message
 
-def main(name, email, appointment_date, appointment_time):
-  """Shows basic usage of the Gmail API.
-  Lists the user's Gmail labels.
-  """
+
+def refresh_token():
+    try:
+       time.sleep(300)  # Sleep for 5 minutes (adjust as needed)
+       if os.path.exists("token.json"):
+          creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+          creds.refresh(Request())
+          # Save the credentials for the next run
+          with open("token.json", "w") as token:
+            token.write(creds.to_json())
+    except Exception as e:
+            print(f"Error refreshing token: {e}")
+
+def main(name, email, dentist_office, appointment_date, appointment_time, appointment_message, appointment_status):
   creds = None
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
@@ -114,24 +121,15 @@ def main(name, email, appointment_date, appointment_time):
   try:
     # Call the Gmail API
     service = build("gmail", "v1", credentials=creds)
-    # results = service.users().labels().list(userId="me").execute()
-    # labels = results.get("labels", [])
-
-    '''
-    if not labels:
-      print("No labels found.")
-      return
-    print("Labels:")
-    for label in labels:
-      print(label["name"])
-    '''
 
     # create message
-    message = create_appointment_message(name, appointment_date, appointment_time) 
+    message = create_appointment_message(name, dentist_office, appointment_date, appointment_time, appointment_message, appointment_status) 
 
-    # test send email
-    send_message(service, email, "Appointment Confirmation", 
-            message, ["appointment.ics"])
+    # send email
+    if appointment_status == "BOOKED":
+        send_message(service, email, "Appointment Confirmation", message, ["appointment.ics"])
+    elif appointment_status == "CANCELED":
+       send_message(service, email, "Appointment Cancelled", message, ["appointment.ics"])
 
   except HttpError as error:
     # TODO(developer) - Handle errors from gmail API.
