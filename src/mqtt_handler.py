@@ -61,6 +61,7 @@ def on_message(client, userdata, msg):
         email = data.get("patientEmail")
         dentist_office = data.get("dentistName")
         appointment_date = data.get("date")
+        appointment_date = appointment_date[0:10]
         appointment_time = data.get("time")
         appointment_message = data.get("message")
         appointment_status = data.get("status")
