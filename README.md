@@ -38,3 +38,6 @@ docker build -t notification-service .
 
 docker run -p 4000:80 notification-service
 ```
+
+## Concluding Remarks
+This service has several restrictions in place to prevent spamming by the Gmail Service Account. Remove these restrictions at your own risk.
