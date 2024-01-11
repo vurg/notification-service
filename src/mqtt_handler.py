@@ -14,16 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import threading
 import json
 import time
 import os
 from dotenv import load_dotenv
 import paho.mqtt.client as paho
 from paho import mqtt
-from notification import refresh_token
 from notification import main
 from iCalendar import create_icalendar_file 
+
 
 # load environment variables
 load_dotenv()
@@ -103,18 +102,10 @@ client.on_message = on_message
 client.on_publish = on_publish
 
 # subscribe to all topics of encyclopedia by using the wildcard "#"
-client.subscribe("booking/#", qos=1)
+client.subscribe("booking", qos=1)
 
 # a single publish, this can also be done in loops, etc.
 client.publish("notification/status", payload="alive", qos=1)
-
-# Second thread
-# Create a thread for refresh_token function
-refresh_thread = threading.Thread(target=refresh_token)
-
-# Start the refresh_token thread as a daemon (so it stops when the main thread stops)
-refresh_thread.daemon = True
-refresh_thread.start()
 
 # loop_forever for simplicity, here you need to stop the loop manually
 # you can also use loop_start and loop_stop

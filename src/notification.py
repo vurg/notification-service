@@ -85,19 +85,6 @@ def create_appointment_message(name, dentist_office, appointment_date, appointme
 
     return message
 
-
-def refresh_token():
-    try:
-       time.sleep(300)  # Sleep for 5 minutes (adjust as needed)
-       if os.path.exists("token.json"):
-          creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-          creds.refresh(Request())
-          # Save the credentials for the next run
-          with open("token.json", "w") as token:
-            token.write(creds.to_json())
-    except Exception as e:
-            print(f"Error refreshing token: {e}")
-
 def main(name, email, dentist_office, appointment_date, appointment_time, appointment_message, appointment_status):
   creds = None
   # The file token.json stores the user's access and refresh tokens, and is
